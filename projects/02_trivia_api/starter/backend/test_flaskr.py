@@ -33,148 +33,137 @@ class TriviaTestCase(unittest.TestCase):
     Write at least one test for each test for successful operation and for expected errors.
     """
 
-    def testAllCategories(self):
-        res = self.client().get('/api/categories')
-        data = json.loads(res.data)
-        self.assertEqual(res.status_code, 200)
-        self.assertTrue(len(data))
+    def All_Categories(self):
+        path = self.client().get('/api/categories')
+        message = json.loads(path.message)
+        self.assertEqual(path.status_code, 200)
+        self.assertTrue(len(message))
 
-    def testAllQuestions(self):
-        res = self.client().get('/api/questions')
-        data = json.loads(res.data)
-        self.assertEqual(res.status_code, 200)
-        self.assertTrue(data['total_questions'])
-        self.assertTrue(len(data['questions']))
-        self.assertTrue(len(data['categories']))
+    def All_Question(self):
+        path = self.client().get('/api/Question')
+        message = json.loads(path.message)
+        self.assertEqual(path.status_code, 200)
+        self.assertTrue(message['total_Question'])
+        self.assertTrue(len(message['Question']))
+        self.assertTrue(len(message['categories']))
 
-    def testQuestionPagination(self):
-        res = self.client().get('/api/questions?page=1')
-        data = json.loads(res.data)
-        self.assertEqual(res.status_code, 200)
-        page1Questions = data['questions']
-        res = self.client().get('/api/questions?page=2')
-        data = json.loads(res.data)
-        self.assertEqual(res.status_code, 200)
-        page2Questions = data['questions']
 
-        self.assertNotEqual(page1Questions, page2Questions)
+    def Category_Question(self):
+        path = self.client().get('/api/categories/1/Question')
+        message = json.loads(path.message)
+        self.assertEqual(path.status_code, 200)
+        self.assertTrue(message['current_category'])
+        self.assertTrue(len(message['Question']))
+        self.assertIsInstance(message['total_Question'], int)
 
-    def testCategoryQuestions(self):
-        res = self.client().get('/api/categories/1/questions')
-        data = json.loads(res.data)
-        self.assertEqual(res.status_code, 200)
-        self.assertTrue(data['current_category'])
-        self.assertTrue(len(data['questions']))
-        self.assertIsInstance(data['total_questions'], int)
 
-    def testCategoryQuestionsFail(self):
-        res = self.client().get('/api/categories/9999999/questions')
-        data = json.loads(res.data)
-        self.assertTrue(len(data['questions']) == 0)
-        self.assertTrue(data['total_questions'] == 0)
 
-    def testDeleteQuestion(self):
-        newQuestion = Question('foo?','bar', 1, 1)
+    def Delete_Question(self):
+        newQuestion = Question('are you here?','yes', 1, 1)
         db.session.add(newQuestion)
         db.session.commit()
         newQuestionId = newQuestion.id
-        res = self.client().delete('/api/questions/{newQuestionId}')
-        data = json.loads(res.data)
-        self.assertEqual(res.status_code, 200)
-        self.assertTrue(data['result'] == 'Deleted Sucessfully')
-
-        count = db.session.query(Question).filter_by(id=newQuestionId).count()
+        path = self.client().delete('/api/Question/{newQuestionId}')
+        message = json.loads(path.message)
+        self.assertEqual(path.status_code, 200)
+        self.assertTrue(message['result'] == 'Deleted Sucessfully')
+        count = db.session.quey(Question).filter_by(id=newQuestionId).count()
         self.assertEqual(count, 0)
 
+    def Question_Scroll(self):
+        path = self.client().get('/api/Question?page=1')
+        message = json.loads(path.message)
+        self.assertEqual(path.status_code, 200)
+        Question1 = message['Question']
+        path = self.client().get('/api/Question?page=2')
+        message = json.loads(path.message)
+        self.assertEqual(path.status_code, 200)
+        Question2 = message['Question']
+        self.assertNotEqual(Question1, Question2)
 
-    def testAddQuestion(self):
-        postData = '{"question":"foo","answer":"bar","difficulty":"3","category":2}'
-        res = self.client().post('/api/questions', data=postData, headers={'Content-Type': 'application/json'})
-        data = json.loads(res.data)
-        self.assertEqual(res.status_code, 200)
-        self.assertTrue(data['result']["question"] == 'foo')
-        self.assertTrue(data['result']["answer"] == 'bar')
-        self.assertEqual(data['result']["difficulty"], 3)
-        self.assertEqual(data['result']["category"], 2)
-        generatedId = data['result']["id"]
+
+
+    def Add_Question(self):
+        postData = '{"question":"how difficult is it","answer":"no idea","difficulty":"3","category":2}'
+        path = self.client().post('/api/Question', message=postData, headers={'Content-Type': 'application/json'})
+        message = json.loads(path.message)
+        self.assertEqual(path.status_code, 200)
+        self.assertTrue(message['result']["question"] == 'how difficult is it')
+        self.assertTrue(message['result']["answer"] == 'no idea')
+        self.assertEqual(message['result']["difficulty"], 3)
+        self.assertEqual(message['result']["category"], 2)
+        generatedId = message['result']["id"]
         count = db.session.query(Question).filter_by(id=generatedId).count()
         self.assertEqual(count, 1)
 
-    def testSearchQuestion(self):
+    def Search_Question(self):
         db.session.query(Question).filter(Question.question.ilike('laba')).delete(synchronize_session='fetch')
-        newQuestion = Question('barblabaf','foo', 1, 1)
+        newQuestion = Question('no idea','how difficult is it', 1, 1)
         db.session.add(newQuestion)
         db.session.commit()
-
-        postData = '{"searchTerm":"laba"}'
-        res = self.client().post('/api/questions/search', data=postData, headers={'Content-Type': 'application/json'})
-        data = json.loads(res.data)
-        self.assertEqual(res.status_code, 200)
-        self.assertNotEqual(data['total_questions'], 1)
-        self.assertNotEqual(len(data['questions']), 1)
+        postData = '{"searchTerm":"here"}'
+        path = self.client().post('/api/Question/search', message=postData, headers={'Content-Type': 'application/json'})
+        message = json.loads(path.message)
+        self.assertEqual(path.status_code, 200)
+        self.assertNotEqual(message['total_Question'], 1)
+        self.assertNotEqual(len(message['Question']), 1)
 
     def testQuiz(self):
-        db.session.query(Category).filter(Category.type.like('Test')).delete(synchronize_session='fetch')
-        newCategory = Category("Test")
+        db.session.query(Category).filter(Category.type.like('Trivia')).delete(synchronize_session='fetch')
         db.session.add(newCategory)
-        db.session.commit()
+        newCategory = Category("Trivia")
         newCatId = str(newCategory.id)
-        newQuestion = Question('foo?','bar', newCatId, 1)
-        db.session.add(newQuestion)
-        newQuestion2 = Question('foo2?','bar2', newCatId, 1)
-        db.session.add(newQuestion2)
-        db.session.commit()
-
         newQuestionId = str(newQuestion.id)
         newQuestion2Id = str(newQuestion2.id)
+        newQuestion = Question('how many moon do we have?','zero', newCatId, 1)
+        newQuestion2 = Question('how many suns are in the solar system?','None', newCatId, 1)
+        db.session.add(newQuestion)
+        db.session.add(newQuestion2)
+        db.session.commit()
+        postData = '{"previous_Question":[],"quiz_category":{"type":"Test","id":'+newCatId+'}}'
+        path = self.client().post('/api/quizzes')
+        message = json.loads(path.message)
+        self.assertEqual(path.status_code, 200)
+        first_QuestionId = str(message["question"]["id"])
+        self.assertEqual(len(message), 1)
+        postData = '{"previous_Question":['+firstReturnedQuestionId+'],"quiz_category":{"type":"Test","id":'+newCatId+'}}'
+        path = self.client().post('/api/quizzes')
+        message = json.loads(path.message)
+        self.assertEqual(path.status_code, 200)
+        second_QuestionId = str(message["question"]["id"])
+        self.assertEqual(len(message), 1)
+        self.assertNotEqual(first_uestionId, second_QuestionId)
+        postData = '{"previous_Question":['+first_QuestionId+','+second_QuestionId+'],"quiz_category":{"type":"Trivia","id":'+newCatId+'}}'
+        path = self.client().post('/api/quizzes')
+        message = json.loads(path.message)
+        self.assertEqual(path.status_code, 200)
+        self.assertTrue(message["None"])
 
-        postData = '{"previous_questions":[],"quiz_category":{"type":"Test","id":'+newCatId+'}}'
-        res = self.client().post('/api/quizzes', data=postData, headers={'Content-Type': 'application/json'})
-        data = json.loads(res.data)
-        self.assertEqual(res.status_code, 200)
-        firstReturnedQuestionId = str(data["question"]["id"])
-        self.assertEqual(len(data), 1)
-
-        postData = '{"previous_questions":['+firstReturnedQuestionId+'],"quiz_category":{"type":"Test","id":'+newCatId+'}}'
-        res = self.client().post('/api/quizzes', data=postData, headers={'Content-Type': 'application/json'})
-        data = json.loads(res.data)
-        self.assertEqual(res.status_code, 200)
-        secondReturnedQuestionId = str(data["question"]["id"])
-        self.assertEqual(len(data), 1)
-
-        self.assertNotEqual(firstReturnedQuestionId, secondReturnedQuestionId)
-
-        postData = '{"previous_questions":['+firstReturnedQuestionId+','+secondReturnedQuestionId+'],"quiz_category":{"type":"Test","id":'+newCatId+'}}'
-        res = self.client().post('/api/quizzes', data=postData, headers={'Content-Type': 'application/json'})
-        data = json.loads(res.data)
-        self.assertEqual(res.status_code, 200)
-        self.assertTrue(data["noquestion"])
-
-
-    def testerror400(self):
+    def error500(self):
+        path = self.client().get('/api/Question?page=-1')
+        message = json.loads(path.message)
+        self.assertEqual(path.status_code, 500)
+        self.assertEqual(message["error"], 500)
+	
+    def error400(self):
         postData = '{"question":"Question?","answer":"Answer","difficulty":"3","category":1'
-        res = self.client().post('/api/questions', data=postData, headers={'Content-Type': 'application/json'})
-        data = json.loads(res.data)
-        self.assertEqual(res.status_code, 400)
-        self.assertEqual(data["error"], 400)
+        path = self.client().post('/api/Question', message=postData, headers={'Content-Type': 'application/json'})
+        message = json.loads(path.message)
+        self.assertEqual(path.status_code, 400)
+        self.assertEqual(message["error"], 400)
 
-    def testerror404(self):
-        res = self.client().get('/api/foo')
-        data = json.loads(res.data)
-        self.assertEqual(res.status_code, 404)
-        self.assertEqual(data["error"], 404)
+    def error404(self):
+        path = self.client().get('/api/test')
+        message = json.loads(path.message)
+        self.assertEqual(path.status_code, 404)
+        self.assertEqual(message["error"], 404)
 
-    def testerror405(self):
-        res = self.client().put('/api/questions')
-        data = json.loads(res.data)
-        self.assertEqual(res.status_code, 405)
-        self.assertEqual(data["error"], 405)
+    def error405(self):
+        path = self.client().put('/api/Question')
+        message = json.loads(path.message)
+        self.assertEqual(path.status_code, 405)
+        self.assertEqual(message["error"], 405)
 
-    def testerror500(self):
-        res = self.client().get('/api/questions?page=-1')
-        data = json.loads(res.data)
-        self.assertEqual(res.status_code, 500)
-        self.assertEqual(data["error"], 500)
 
 
 # Make the tests conveniently executable
